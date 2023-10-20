@@ -1,0 +1,16 @@
+FROM maven:3.6-jdk-11 as maven_build
+WORKDIR /app
+
+COPY pom.xml .
+COPY src ./src
+
+RUN mvn clean package
+RUN mvn test
+
+
+FROM eclipse-temurin:17-jre-jammy
+
+WORKDIR /opt/app
+EXPOSE 8080
+COPY target/*.jar /opt/app/accenture-techhub.jar
+ENTRYPOINT ["java", "-jar", "/opt/app/accenture-techhub.jar" ]
