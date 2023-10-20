@@ -1,0 +1,9 @@
+FROM mysql
+
+ENV MYSQL_DATABASE=172.17.0.2:3306/accwe-hospital
+ENV MYSQL_USER=root
+ENV MYSQL_PASSWORD=root
+
+ADD data.sql /etc/mysql/data.sql
+
+RUN sed -i 's/MYSQL_DATABASE/'$MYSQL_DATABASE'/g' /etc/mysql/data.sql
