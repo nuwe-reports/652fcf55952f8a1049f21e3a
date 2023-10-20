@@ -3,12 +3,17 @@ package com.example.demo.controllers;
 import com.example.demo.repositories.*;
 import com.example.demo.entities.*;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -22,6 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api")
 public class AppointmentController {
+	
+	private static final Logger logger = LoggerFactory.getLogger(AppointmentController.class);
 
     @Autowired
     AppointmentRepository appointmentRepository;
@@ -50,13 +57,43 @@ public class AppointmentController {
         }
     }
 
-    @PostMapping("/appointment")
-    public ResponseEntity<List<Appointment>> createAppointment(@RequestBody Appointment appointment){
-        /** TODO 
-         * Implement this function, which acts as the POST /api/appointment endpoint.
-         * Make sure to check out the whole project. Specially the Appointment.java class
-         */
-        return new ResponseEntity<>(HttpStatus.I_AM_A_TEAPOT);
+	@PostMapping("/appointment")
+	public ResponseEntity<List<Appointment>> createAppointment(@RequestBody Appointment appointment) {
+		if (checkDates(appointment)) {
+			boolean overlaps = checkOverlaps(appointment);
+			
+			if (!overlaps) {
+				appointmentRepository.save(appointment);
+				return new ResponseEntity<>(HttpStatus.OK);
+			} else {
+				logger.error("ERROR - La nueva cita solapa con otra cita actual. Modifíquela para poder añadirla");
+				return new ResponseEntity<>(HttpStatus.NOT_ACCEPTABLE);
+			}
+		} else {
+			logger.error("ERROR - Las horas de la cita no son correctas");
+			return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+		}
+	}
+	
+	private boolean checkDates(Appointment appointment) {
+		if (appointment.getStartsAt().equals(appointment.getFinishesAt())) {
+			return false;
+		} else {
+			return true;
+		}
+	}
+    
+    private boolean checkOverlaps(Appointment appointment) {
+    	boolean overlaps = false;
+    	
+    	List<Appointment> currentAppointments = appointmentRepository.findAll().stream().filter
+    			(ap -> ap.getRoom().getRoomName().equals(appointment.getRoom().getRoomName())).collect(Collectors.toList());
+    	
+    	for (int index = 0; index < currentAppointments.size() && !overlaps; index++) {
+    		overlaps = appointment.overlaps(currentAppointments.get(index));
+    	}
+    	
+    	return overlaps;
     }
 
 
